@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd">
+	<!-- shiroFilter Bean的id 必须和web.xml中配置的filter的name一致 -->
+	<bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+		<property name="securityManager" ref="securityManager" />
+		<!--loginUrl 没有登录的用户请求需要登录的页面时自动跳转到登录页面，不是必须的属性，不输入地址的话会自动寻找项目web项目的根目录下的”/login.jsp”页面。 -->
+		<property name="loginUrl" value="/login。html" />
+		<!--successUrl 登录成功默认跳转页面，不配置则跳转至”/”。如果登陆前点击的一个需要登录的页面，则在登录自动跳转到那个需要登录的页面。不跳转到此。 -->
+		<property name="successUrl" value="/suc.html" />
+		<!--unauthorizedUrl：没有权限默认跳转的页面。 -->
+		<property name="unauthorizedUrl" value="/un.html" />
+		<!-- 这个就是权限路径过滤 会在下面单独列出来 -->
+		<property name="filterChainDefinitions">
+			<value>
+				/home* = anon
+				/ = anon
+				/logout = logout
+				/role/** = roles[admin]
+				/permission/** = perms[permssion:look]
+				/** = authc
+			</value>
+		</property>
+	</bean>
+	<!-- 配置securityManager -->
+	<bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+		<!-- 单realm应用。如果有多个realm，使用‘realms’属性代替 -->
+		<property name="realm" ref="sampleRealm" />
+		<property name="cacheManager" ref="cacheManager" />  <!-- 缓存配置，集群环境慎用 -->
+	</bean>
+	<bean id="cacheManager" class="org.apache.shiro.cache.ehcache.EhCacheManager" />
+	<!-- 一个简单的jdbcRealm -->
+	<bean id="sampleRealm" class="org.apache.shiro.realm.jdbc.JdbcRealm">
+		<property name="dataSource" ref="dataSource" />
+		<!-- dataSource数据源，可以引用spring中配置的数据源 -->
+		<property name="authenticationQuery"
+			value="select t.password from my_user t where t.username = ?" />
+		<!-- authenticationQuery登录认证用户的查询SQL，需要用登录用户名作为条件，查询密码字段。 -->
+		<property name="userRolesQuery"
+			value="select a.rolename from my_user_role t left join my_role a on t.roleid = a.id where t.username = ? " />
+		<!-- userRolesQuery用户角色查询SQL，需要通过登录用户名去查询。查询角色字段 -->
+		<property name="permissionsQuery"
+			value="SELECT B.PERMISSION FROM MY_ROLE T LEFT JOIN MY_ROLE_PERMISSION A ON T.ID = A.ROLE_ID LEFT JOIN MY_PERMISSION B ON A.PERMISSION = B.ID WHERE T.ROLENAME = ? " />
+		<!-- permissionsQuery用户的权限资源查询SQL，需要用单一角色查询角色下的权限资源，如果存在多个角色，则是遍历每个角色，分别查询出权限资源并添加到集合中。 -->
+		<property name="permissionsLookupEnabled" value="true" />
+		<!-- permissionsLookupEnabled默认false。False时不会使用permissionsQuery的SQL去查询权限资源。设置为true才会去执行。 -->
+		<property name="saltStyle" value="NO_SALT" />
+		<!-- saltStyle密码是否加盐，默认是NO_SALT不加盐。加盐有三种选择CRYPT,COLUMN,EXTERNAL。这里按照不加盐处理。 -->
+		<property name="credentialsMatcher" ref="hashedCredentialsMatcher" />
+		<!-- credentialsMatcher密码匹配规则 -->
+	</bean>
+	<bean id="hashedCredentialsMatcher"
+		class="org.apache.shiro.authc.credential.HashedCredentialsMatcher">
+		<property name="hashAlgorithmName" value="MD5" />
+		<!-- hashAlgorithmName必须的，没有默认值。可以有MD5或者SHA-1，如果对密码安全有更高要求可以用SHA-256或者更高。这里使用MD5 -->
+		<property name="storedCredentialsHexEncoded" value="true" />
+		<!-- storedCredentialsHexEncoded默认是true，此时用的是密码加密用的是Hex编码；false时用Base64编码 -->
+		<property name="hashIterations" value="1" />
+		<!-- hashIterations迭代次数，默认值是1。 -->
+	</bean>
+</beans> 
